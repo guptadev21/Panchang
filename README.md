@@ -1,4 +1,4 @@
-# Panchang Term
+# Panchang
 
 Panchang Term is a command-line interface (CLI) calendar application that allows you to view the month, store events, and retrieve events for the month.
 
@@ -24,19 +24,19 @@ cd panchang_term
 To display the current month's calendar, use the following command:
 
 ```sh
-./panchang_term 
+./panchang
 ```
 
 ### Add an Event
 
 To add an event to current date, use the following command:
 ```sh
-./panchang_term event add 
+./panchang event add 
 ```
 
 To add an event to a specific date, use the following command:
 ```sh
-./panchang_term event add --date DATE
+./panchang event add --date DATE
 ```
 
 ### Get Events for the Month
@@ -44,7 +44,13 @@ To add an event to a specific date, use the following command:
 To retrieve all events for the current month, use the following command:
 
 ```sh
-./panchang_term events
+./panchang event get
+```
+
+To retrieve all events for the selected month, use the following command:
+
+```sh
+./panchang event get --month MONTH
 ```
 
 ## Contributing

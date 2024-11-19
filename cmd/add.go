@@ -1,16 +1,13 @@
-/*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"time"
 
 	Events "panchang/src/events"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -22,21 +19,26 @@ var addCmd = &cobra.Command{
 	Short: "Add an event",
 	Long:  `Add an event to the calendar. You will be prompted to enter the title and description of the event.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Define color styles
+		errorStyle := color.New(color.FgRed, color.Bold)
+		successStyle := color.New(color.FgGreen, color.Bold)
+		promptStyle := color.New(color.FgCyan, color.Bold)
+
 		// Prompt for title and description
 		reader := bufio.NewReader(os.Stdin)
 
-		fmt.Print("Enter event title: ")
+		promptStyle.Print("Enter event title: ")
 		title, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Error reading title:", err)
+			errorStyle.Printf("Error reading title: %v\n", err)
 			return
 		}
 		title = title[:len(title)-1] // Remove the trailing newline
 
-		fmt.Print("Enter event description: ")
+		promptStyle.Print("Enter event description: ")
 		description, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Error reading description:", err)
+			errorStyle.Printf("Error reading description: %v\n", err)
 			return
 		}
 		description = description[:len(description)-1] // Remove the trailing newline
@@ -48,14 +50,19 @@ var addCmd = &cobra.Command{
 		} else {
 			date, err = time.Parse("2006-01-02", eventDate)
 			if err != nil {
-				fmt.Println("Invalid date format. Please use YYYY-MM-DD.")
+				errorStyle.Println("Invalid date format. Please use YYYY-MM-DD.")
 				return
 			}
 		}
 
 		// Store the event
-		Events.StoreEvent(title, date, description)
-		fmt.Println("Event added successfully!")
+		_, err = Events.StoreEvent(title, date, description)
+		if err != nil {
+			errorStyle.Printf("Failed to store event: %v\n", err)
+			return
+		}
+
+		successStyle.Println("Event added successfully!")
 	},
 }
 
