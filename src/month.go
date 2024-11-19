@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fatih/color"
+
 	"github.com/markkurossi/tabulate"
 )
 
@@ -20,23 +22,29 @@ func PrintMonth(year int, month time.Month) {
 	table := tabulate.New(tabulate.Plain)
 
 	// Add header for the days of the week
-	table.Header("Sun")
-	table.Header("Mon")
-	table.Header("Tue")
-	table.Header("Wed")
-	table.Header("Thu")
-	table.Header("Fri")
-	table.Header("Sat")
+	table.Header(color.YellowString("Sun"))
+	table.Header(color.YellowString("Mon"))
+	table.Header(color.YellowString("Tue"))
+	table.Header(color.YellowString("Wed"))
+	table.Header(color.YellowString("Thu"))
+	table.Header(color.YellowString("Fri"))
+	table.Header(color.YellowString("Sat"))
 
 	// Initialize the first row
 	row := table.Row()
 	// Add empty columns for the days before the 1st
 	for i := 0; i < weekday; i++ {
-		row.Column("")
+		row.Column(color.BlackString(""))
 	}
 	// Add the days of the month
 	for day := 1; day <= daysInMonth; day++ {
-		row.Column(strconv.Itoa(day))
+		// Check if the current day is today
+		today := time.Now()
+		if year == today.Year() && month == today.Month() && day == today.Day() {
+			row.Column(color.BlueString(strconv.Itoa(day)))
+		} else {
+			row.Column(color.WhiteString(strconv.Itoa(day)))
+		}
 		weekday = (weekday + 1) % 7
 		if weekday == 0 {
 			// Start a new row for the next week
