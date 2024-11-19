@@ -19,11 +19,11 @@ type Event struct {
 var BasePath string
 
 func init() {
-	dir, err := os.Getwd()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to get working directory: %v", err))
+		panic(fmt.Sprintf("Failed to get user home directory: %v", err))
 	}
-	BasePath = dir + "/EventFiles"
+	BasePath = filepath.Join(homeDir, "Documents", "EventFiles")
 	// Ensure the base path directory exists
 	if _, err := os.Stat(BasePath); os.IsNotExist(err) {
 		err := os.MkdirAll(BasePath, os.ModePerm)
@@ -34,7 +34,7 @@ func init() {
 }
 
 // StoreEvent stores the event details in a file named <month_name>_events.txt
-func StoreEvent(title string, date time.Time, description string) {
+func StoreEvent(title string, date time.Time, description string) (bool, error) {
 	// Construct the filename based on the month name
 	fileName := date.Month().String() + "_events.txt"
 	// Create the event instance
@@ -47,23 +47,23 @@ func StoreEvent(title string, date time.Time, description string) {
 	// Open the file in append mode, create it if it doesn't exist
 	file, err := os.OpenFile(BasePath+"/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to open file: %v", err))
+		return false, fmt.Errorf("failed to open events file: %w", err)
 	}
 	defer file.Close()
 
 	// Serialize the event as JSON
 	eventData, err := json.Marshal(event)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to marshal event: %v", err))
+		return false, fmt.Errorf("failed to serialize event: %w", err)
 	}
 
 	// Write the serialized event data to the file
 	_, err = file.WriteString(string(eventData) + "\n")
 	if err != nil {
-		panic(fmt.Sprintf("Failed to write to file: %v", err))
+		return false, fmt.Errorf("failed to write event data: %w", err)
 	}
 
-	fmt.Println("Event stored successfully.")
+	return true, nil
 }
 
 // GetEvents retrieves the events for the specified month

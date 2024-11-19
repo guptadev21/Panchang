@@ -6,18 +6,38 @@ import (
 
 	GetMonth "panchang/src"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+)
+
+var (
+	month int
+	year  int
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "panchang",
-	Short: "Calendar for Hindu Panchang",
-	Long:  `Panchang is a Hindu calendar and almanac, which follows traditional units of Indian timekeeping, and presents important dates and their calculations in a tabular form.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
+	Short: "A simple command-line calendar application",
+	Long:  `A simple command-line calendar application that displays a calendar for a given month and year.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		GetMonth.PrintMonth(time.Now().Year(), time.Now().Month())
+		currentTime := time.Now()
+
+		// Use provided flags or default to current month/year
+		if year == 0 {
+			year = currentTime.Year()
+		}
+		if month == 0 {
+			month = int(currentTime.Month())
+		}
+
+		// Validate the month range
+		if month < 1 || month > 12 {
+			color.New(color.FgRed).Println("Invalid month. Please specify a month between 1 and 12.")
+			return
+		}
+
+		GetMonth.PrintMonth(year, time.Month(month))
 	},
 }
 
@@ -31,13 +51,10 @@ func Execute() {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+	// Add flags for specifying the month and year
+	rootCmd.Flags().IntVarP(&month, "month", "m", 0, "Specify the month (1-12)")
+	rootCmd.Flags().IntVarP(&year, "year", "y", 0, "Specify the year (e.g., 2024)")
 
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.panchang.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Local flags for customization
+	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
