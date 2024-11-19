@@ -1,6 +1,3 @@
-/*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -26,11 +23,6 @@ var monthCmd = &cobra.Command{
 			return
 		}
 
-		// If no year is passed, use the current year
-		if year == 0 {
-			year = time.Now().Year()
-		}
-
 		// Fetch and display Panchang for the specified month and year
 		GetMonth.PrintMonth(year, time.Month(month))
 	},
@@ -42,6 +34,6 @@ func init() {
 	// Here you will define your flags and configuration settings.
 
 	// Add the --year and --month flags to the month command
-	monthCmd.Flags().IntVarP(&year, "year", "y", 0, "Year for the Panchang (default is current year)")
+	monthCmd.Flags().IntVarP(&year, "year", "y", time.Now().Year(), "Year for the Panchang (default is current year)")
 	monthCmd.Flags().IntVarP(&month, "month", "m", int(time.Now().Month()), "Month for the Panchang")
 }
