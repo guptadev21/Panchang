@@ -1,4 +1,4 @@
-# Panchang Term
+# Panchang
 
 Panchang Term is a command-line interface (CLI) calendar application that allows you to view the month, store events, and retrieve events for the month.
 
