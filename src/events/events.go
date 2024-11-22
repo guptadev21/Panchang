@@ -1,7 +1,6 @@
 package Events
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,7 +15,15 @@ type Event struct {
 	Description string `json:"description"`
 }
 
-var BasePath string
+// EventsWrapper represents a JSON wrapper containing an array of events
+type EventsWrapper struct {
+	Events []Event `json:"events"`
+}
+
+var (
+	BasePath       string
+	EventsFilePath string
+)
 
 func init() {
 	homeDir, err := os.UserHomeDir()
@@ -31,77 +38,100 @@ func init() {
 			panic(fmt.Sprintf("Failed to create base directory: %v", err))
 		}
 	}
+	EventsFilePath = filepath.Join(BasePath, "events.json")
 }
 
-// StoreEvent stores the event details in a file named <month_name>_events.txt
+// StoreEvent stores the event details in the centralized events file
 func StoreEvent(title string, date time.Time, description string) (bool, error) {
-	// Construct the filename based on the month name
-	fileName := date.Month().String() + "_events.txt"
-	// Create the event instance
+	// Read existing events from the centralized file
+	allEvents := make(map[string][]Event)
+	file, err := os.Open(EventsFilePath)
+	if err == nil {
+		defer file.Close()
+		decoder := json.NewDecoder(file)
+		if err := decoder.Decode(&allEvents); err != nil {
+			return false, fmt.Errorf("failed to decode existing events: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return false, fmt.Errorf("failed to open events file: %w", err)
+	}
+
+	// Create a new event instance
 	event := Event{
 		Title:       title,
-		Date:        date.Format("2006-01-02"), // Format the date as YYYY-MM-DD
+		Date:        date.Format("2006-01-02"),
 		Description: description,
 	}
 
-	// Open the file in append mode, create it if it doesn't exist
-	file, err := os.OpenFile(BasePath+"/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// Add the event to the correct month
+	monthName := date.Month().String()
+	allEvents[monthName] = append(allEvents[monthName], event)
+
+	// Write the updated events back to the centralized file
+	file, err = os.Create(EventsFilePath)
 	if err != nil {
-		return false, fmt.Errorf("failed to open events file: %w", err)
+		return false, fmt.Errorf("failed to open events file for writing: %w", err)
 	}
 	defer file.Close()
 
-	// Serialize the event as JSON
-	eventData, err := json.Marshal(event)
-	if err != nil {
-		return false, fmt.Errorf("failed to serialize event: %w", err)
-	}
-
-	// Write the serialized event data to the file
-	_, err = file.WriteString(string(eventData) + "\n")
-	if err != nil {
-		return false, fmt.Errorf("failed to write event data: %w", err)
+	encoder := json.NewEncoder(file)
+	if err := encoder.Encode(allEvents); err != nil {
+		return false, fmt.Errorf("failed to write events: %w", err)
 	}
 
 	return true, nil
 }
 
-// GetEvents retrieves the events for the specified month
-func GetEvents(month time.Month) ([]Event, error) {
-	// Construct the file name based on the month
-	fileName := filepath.Join(BasePath, month.String()+"_events.txt")
-
-	// Open the file for the specified month
-	file, err := os.Open(fileName)
+// GetEvents retrieves the events for the specified month or all events if `all` is true
+func GetEvents(month time.Month, all bool) ([]Event, error) {
+	// Open the centralized events file
+	file, err := os.Open(EventsFilePath)
 	if err != nil {
-		// Return an empty list if the file doesn't exist
 		if os.IsNotExist(err) {
+			// Return an empty list if the file doesn't exist
 			return []Event{}, nil
 		}
 		return nil, fmt.Errorf("failed to open events file: %w", err)
 	}
 	defer file.Close()
 
-	// Read and parse the file
-	var events []Event
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
+	// Parse the JSON data from the file
+	var allEvents map[string][]Event
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&allEvents); err != nil {
+		return nil, fmt.Errorf("failed to decode events file: %w", err)
+	}
 
-		// Parse the JSON data into an Event object
-		var event Event
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			return nil, fmt.Errorf("failed to parse event: %w", err)
+	// If `all` is true, collect all events across months
+	if all {
+		var events []Event
+		for _, monthEvents := range allEvents {
+			events = append(events, monthEvents...)
 		}
-
-		// Append the event to the list
-		events = append(events, event)
+		return events, nil
 	}
 
-	// Check for any error during scanning
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading events file: %w", err)
+	// Retrieve events for the specified month
+	monthName := month.String()
+	if events, exists := allEvents[monthName]; exists {
+		return events, nil
 	}
 
-	return events, nil
+	return []Event{}, nil
+}
+
+func GetEventsByDate(date time.Time) ([]Event, error) {
+	events, err := GetEvents(date.Month(), false)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredEvents []Event
+	for _, event := range events {
+		if event.Date == date.Format("2006-01-02") {
+			filteredEvents = append(filteredEvents, event)
+		}
+	}
+
+	return filteredEvents, nil
 }

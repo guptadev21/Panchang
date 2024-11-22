@@ -10,11 +10,12 @@ import (
 )
 
 var monthFlag string
+var allFlag bool
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
 	Use:   "get",
-	Short: "Get events",
+	Short: "Get events for a specific month",
 	Long:  `Get events for a specific month. If no month is specified, the current month's events will be displayed.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Define color styles
@@ -22,32 +23,38 @@ var getCmd = &cobra.Command{
 		infoStyle := color.New(color.FgBlue, color.Bold)
 		titleStyle := color.New(color.FgGreen).Add(color.Underline)
 
-		// Determine the target month
-		var targetMonth time.Month
-		if monthFlag == "" {
-			targetMonth = time.Now().Month() // Default to the current month
+		var events []Events.Event
+		var err error
+		if allFlag {
+			events, err = Events.GetEvents(time.January, true)
+			if err != nil {
+				errorStyle.Printf("Failed to fetch events: %v\n", err)
+				return
+			}
 		} else {
 			parsedMonth, err := time.Parse("January", monthFlag)
 			if err != nil {
 				errorStyle.Println("Invalid month name. Please use the full month name, e.g., 'January'.")
 				return
 			}
-			targetMonth = parsedMonth.Month()
+			targetMonth := parsedMonth.Month()
+			events, err = Events.GetEvents(targetMonth, false)
+			if err != nil {
+				errorStyle.Printf("Failed to fetch events for %s: %v\n", targetMonth.String(), err)
+				return
+			}
 		}
-
-		// Fetch events for the target month
-		events, err := Events.GetEvents(targetMonth)
 		if err != nil {
 			errorStyle.Printf("Failed to fetch events: %v\n", err)
 			return
 		}
 		if len(events) == 0 {
-			infoStyle.Printf("No events found for %s.\n", targetMonth.String())
+			infoStyle.Printf("No events found.\n")
 			return
 		}
 
 		// Print the events
-		titleStyle.Printf("\n\nEvents for %s:\n\n", targetMonth.String())
+		titleStyle.Printf("\n\nEvents :\n\n")
 		for _, event := range events {
 			color.Yellow("Title: %s\n", event.Title)
 			color.White("Date: %s\nDescription: %s\n\n", event.Date, event.Description)
@@ -59,5 +66,6 @@ func init() {
 	eventCmd.AddCommand(getCmd)
 
 	// Add the --month flag
-	getCmd.Flags().StringVarP(&monthFlag, "month", "m", "", "Month to fetch events for (default: current month, e.g., 'January')")
+	getCmd.Flags().StringVarP(&monthFlag, "month", "m", time.Now().Format("January"), "Month to fetch events for (default: current month).\nUse the full month name, e.g., 'January'.")
+	getCmd.Flags().BoolVar(&allFlag, "all", false, "Get all events")
 }

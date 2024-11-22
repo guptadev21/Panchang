@@ -5,22 +5,48 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/fatih/color"
+	Events "panchang/src/events"
 
+	"github.com/fatih/color"
 	"github.com/markkurossi/tabulate"
 )
 
+// Constants for readability
+const (
+	dateFormat  = "2006-01-02"
+	daysInAWeek = 7
+)
+
+// PrintMonth prints the calendar for the specified month and year
 func PrintMonth(year int, month time.Month) {
 	// Get the first day of the month
 	firstOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
-	// Find out which day of the week the 1st falls on
 	weekday := int(firstOfMonth.Weekday())
-	// Number of days in the month
 	daysInMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local).Day()
 
-	// Create a table to store the calendar data
-	table := tabulate.New(tabulate.Plain)
+	// Retrieve all dates with events for the month
+	datesWithEvents, err := Events.GetDatesWithEvents(month, year)
+	if err != nil {
+		color.Red("Error retrieving event dates: %v\n", err)
+		return
+	}
 
+	// print dates with events
+	for _, date := range datesWithEvents {
+		print(date)
+	}
+
+	// Convert datesWithEvents to a map for faster lookups
+	eventDates := make(map[string]struct{})
+	for _, date := range datesWithEvents {
+		eventDates[date] = struct{}{}
+	}
+
+	// Get today's date
+	today := time.Now()
+
+	// Create a table for the calendar
+	table := tabulate.New(tabulate.Plain)
 	// Add header for the days of the week
 	table.Header(color.YellowString("Sun"))
 	table.Header(color.YellowString("Mon"))
@@ -32,25 +58,50 @@ func PrintMonth(year int, month time.Month) {
 
 	// Initialize the first row
 	row := table.Row()
-	// Add empty columns for the days before the 1st
 	for i := 0; i < weekday; i++ {
-		row.Column(color.BlackString(""))
+		row.Column(color.BlackString("")) // Fill empty slots before the first day
 	}
-	// Add the days of the month
+
+	// Populate the days of the month
 	for day := 1; day <= daysInMonth; day++ {
-		// Check if the current day is today
-		today := time.Now()
-		if year == today.Year() && month == today.Month() && day == today.Day() {
-			row.Column(color.BlueString(strconv.Itoa(day)))
-		} else {
-			row.Column(color.WhiteString(strconv.Itoa(day)))
-		}
+		// Create the full date string for the current day
+		currentDate := time.Date(year, month, day, 0, 0, 0, 0, time.Local).Format(dateFormat)
+
+		// Add the day to the row with appropriate formatting
+		addDayToRow(row, day, currentDate, eventDates, today)
+
+		// Start a new row for the next week
 		weekday = (weekday + 1) % 7
 		if weekday == 0 {
-			// Start a new row for the next week
-			row = table.Row()
+			row = table.Row() // Create a new row
 		}
 	}
 
+	// Fill the remaining columns in the last row, if necessary
+	for i := weekday; i < daysInAWeek; i++ {
+		row.Column("")
+	}
+
+	// Print the calendar
 	table.Print(os.Stdout)
+}
+
+// addDayToRow adds a day to the current row with appropriate color formatting
+func addDayToRow(row *tabulate.Row, day int, currentDate string, eventDates map[string]struct{}, today time.Time) {
+	_, hasEvent := eventDates[currentDate]
+	// print(eventDates[currentDate])
+	switch {
+	case hasEvent && currentDate == today.Format(dateFormat):
+		// Today's date with events
+		row.Column(color.MagentaString(strconv.Itoa(day)))
+	case hasEvent:
+		// Event date
+		row.Column(color.GreenString(strconv.Itoa(day)))
+	case currentDate == today.Format(dateFormat):
+		// Today's date without events
+		row.Column(color.CyanString(strconv.Itoa(day)))
+	default:
+		// Regular date
+		row.Column(color.WhiteString(strconv.Itoa(day)))
+	}
 }
